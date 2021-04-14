@@ -20,6 +20,11 @@
     SOFTWARE.
 */
 
+/*
+    Martin Burtscher and Paruj Ratanaworabhan's paper:
+    https://www.researchgate.net/publication/224323445_FPC_A_High-Speed_Compressor_for_Double-Precision_Floating-Point_Data
+*/
+
 #ifndef FPC_INCLUDED
 #define FPC_INCLUDED
 #include <stdint.h>
@@ -105,12 +110,6 @@ FPC_EXTERN_C_END
 #ifdef FPC_IMPLEMENTATION
 #include <string.h>
 
-#if UINTPTR_MAX == UINT32_MAX
-#define FPC_32BIT
-#else
-#define FPC_64BIT
-#endif
-
 #if defined(_DEBUG) || !defined(NDEBUG)
 #include <assert.h>
 #define FPC_DEBUG
@@ -130,37 +129,27 @@ FPC_EXTERN_C_END
 #ifdef FPC_DEBUG
 #define FPC_INVARIANT(EXPRESSION) assert((EXPRESSION))
 #define FPC_INLINE_ALWAYS
-#define FPC_INLINE_NEVER
 #else
 #define FPC_INVARIANT(EXPRESSION) __builtin_assume((EXPRESSION))
 #define FPC_INLINE_ALWAYS __attribute__((always_inline))
-#define FPC_INLINE_NEVER __attribute__((noinline))
 #endif
 #elif defined(_MSC_VER)
 #ifndef _WIN32
 #error "FPC: UNSUPPORTED OS"
 #endif
-#include <winnt.h>
-#if REG_DWORD == REG_DWORD_LITTLE_ENDIAN
-#define FPC_LITTLE_ENDIAN
-#endif
+#include <immintrin.h>
 #define FPC_EXPECT(VALUE, EXPECTED) (VALUE)
 #define FPC_CLZ_U32(MASK) ((uint8_t)__lzcnt((MASK)))
 #define FPC_CLZ_U64(MASK) ((uint8_t)__lzcnt64((MASK)))
 #define FPC_POPCNT_U32(MASK) ((uint8_t)__popcnt((MASK)))
 #define FPC_POPCNT_U64(MASK) ((uint8_t)__popcnt64((MASK)))
-#include <stdlib.h> // GEE THANKS MSVC
-#include <immintrin.h>
-#define FPC_BSWAP_U64(MASK) ((uint64_t)_byteswap_uint64((MASK)))
 #define FPC_RESTRICT __restrict
 #ifdef FPC_DEBUG
 #define FPC_INVARIANT(EXPRESSION) assert((EXPRESSION))
 #define FPC_INLINE_ALWAYS
-#define FPC_INLINE_NEVER
 #else
 #define FPC_INVARIANT(EXPRESSION) __assume((EXPRESSION))
 #define FPC_INLINE_ALWAYS __forceinline
-#define FPC_INLINE_NEVER __declspec(noinline)
 #endif
 #else
 #error "FPC: UNSUPPORTED COMPILER"
@@ -171,7 +160,7 @@ FPC_EXTERN_C_END
 #define FPC_LOG2_U32(VALUE) ((uint8_t)31 - (uint8_t)FPC_CLZ_U32(VALUE))
 #define FPC_LOG2_U64(VALUE) ((uint8_t)63 - (uint8_t)FPC_CLZ_U64(VALUE))
 
-#ifdef FPC_32BIT
+#if UINTPTR_MAX == UINT32_MAX
 #define FPC_POPCNT_UPTR(VALUE) FPC_POPCNT_U32(VALUE)
 #define FPC_LOG2_UPTR(VALUE) FPC_LOG2_U32(VALUE)
 #else
@@ -181,7 +170,6 @@ FPC_EXTERN_C_END
 
 #define FPC_IS_POW2_UPTR(VALUE) (FPC_POPCNT_UPTR(VALUE) == 1)
 
-FPC_EXTERN_C_BEGIN
 FPC_INLINE_ALWAYS static size_t fpc_inline_encode_split(
     fpc_context_t* FPC_RESTRICT ctx,
     const double* FPC_RESTRICT values, size_t value_count,
@@ -341,6 +329,7 @@ FPC_INLINE_ALWAYS static void fpc_inline_decode_split(
     }
 }
 
+FPC_EXTERN_C_BEGIN
 FPC_ATTR fpc_hash_args_t FPC_CALL fpc_hash_args_default()
 {
     fpc_hash_args_t r;
