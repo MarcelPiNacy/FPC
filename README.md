@@ -20,30 +20,27 @@ uint64_t dfcm[FPC_TABLE_SIZE_DEFAULT];
 
 int main()
 {
-	fpc_context_t ctx;
-	int i;
-
-	srand(123);
-	for (i = 0; i != DOUBLE_COUNT; ++i)
-		data[i] = rand();
-
-	ctx.fcm_size = FPC_TABLE_SIZE_DEFAULT;
-	ctx.fcm = fcm;
-	ctx.dfcm_size = FPC_TABLE_SIZE_DEFAULT;
-	ctx.dfcm = dfcm;
-	ctx.hash_args = fpc_hash_args_default();
-	ctx.seed = 0.0;
+    fpc_context_t ctx;
+    int i;
+    srand(123);
+    for (i = 0; i != DOUBLE_COUNT; ++i)
+    	data[i] = rand();
+    ctx.fcm_size = FPC_TABLE_SIZE_DEFAULT;
+    ctx.fcm = fcm;
+    ctx.dfcm_size = FPC_TABLE_SIZE_DEFAULT;
+    ctx.dfcm = dfcm;
+    ctx.hash_args = fpc_hash_args_default();
+    ctx.seed = 0.0;
     
     // Compression:
-	memset(fcm, 0, sizeof(fcm));
-	memset(dfcm, 0, sizeof(dfcm));
-	size_t compressed_byte_count = fpc_encode(&ctx, data, DOUBLE_COUNT, compressed);
-
+    memset(fcm, 0, sizeof(fcm));
+    memset(dfcm, 0, sizeof(dfcm));
+    size_t compressed_byte_count = fpc_encode(&ctx, data, DOUBLE_COUNT, compressed);
+    
     // Decompression:
-	memset(fcm, 0, sizeof(fcm));
-	memset(dfcm, 0, sizeof(dfcm));
-	fpc_decode(&ctx, compressed, decompressed, DOUBLE_COUNT);
-
-	return 0;
+    memset(fcm, 0, sizeof(fcm));
+    memset(dfcm, 0, sizeof(dfcm));
+    fpc_decode(&ctx, compressed, decompressed, DOUBLE_COUNT);
+    return 0;
 }
 ```
