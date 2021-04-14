@@ -6,6 +6,7 @@ This repository contains a C implementation of FPC, Martin Burtscher and Paruj R
 #define FPC_IMPLEMENTATION
 #include <fpc.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define DOUBLE_COUNT (1U << 12U)
 #define OUTPUT_SIZE (FPC_UPPER_BOUND(1U << 12U) * 8)
@@ -32,11 +33,13 @@ int main()
 	ctx.dfcm = dfcm;
 	ctx.hash_args = fpc_hash_args_default();
 	ctx.seed = 0.0;
-
+    
+    // Compression:
 	memset(fcm, 0, sizeof(fcm));
 	memset(dfcm, 0, sizeof(dfcm));
 	size_t compressed_byte_count = fpc_encode(&ctx, data, DOUBLE_COUNT, compressed);
 
+    // Decompression:
 	memset(fcm, 0, sizeof(fcm));
 	memset(dfcm, 0, sizeof(dfcm));
 	fpc_decode(&ctx, compressed, decompressed, DOUBLE_COUNT);
