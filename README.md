@@ -9,7 +9,7 @@ This repository contains a C implementation of FPC, Martin Burtscher and Paruj R
 #include <string.h>
 
 #define DOUBLE_COUNT (1U << 12U)
-#define OUTPUT_SIZE (FPC_UPPER_BOUND(1U << 12U) * 8)
+#define OUTPUT_SIZE (FPC_UPPER_BOUND(1U << 12U))
 
 double data[DOUBLE_COUNT];
 uint8_t compressed[OUTPUT_SIZE];
