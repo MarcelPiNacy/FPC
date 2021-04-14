@@ -217,11 +217,8 @@ FPC_INLINE_ALWAYS static size_t fpc_inline_encode_split(
         tmp[1] = type_b ? dfcm_prediction : fcm_prediction;
         lzbc_a = (FPC_CLZ_U64(tmp[0]) >> 3);
         lzbc_b = (FPC_CLZ_U64(tmp[1]) >> 3);
-        if (lzbc_a == 4)
-            lzbc_a = 3;
-        if (lzbc_b == 4)
-            lzbc_b = 3;
-        FPC_INVARIANT(lzbc_a < 8 && lzbc_b < 8);
+        lzbc_a -= (lzbc_a == 4);
+        lzbc_b -= (lzbc_b == 4);
         header_a = (type_a << 3) | lzbc_a;
         header_b = (type_b << 3) | lzbc_b;
         lzbc_a = 8 - lzbc_a;
@@ -250,8 +247,7 @@ FPC_INLINE_ALWAYS static size_t fpc_inline_encode_split(
         type_a = fcm_prediction > dfcm_prediction;
         tmp[0] = type_a ? dfcm_prediction : fcm_prediction;
         lzbc_a = (FPC_CLZ_U64(tmp[0]) >> 3);
-        if (lzbc_a == 4)
-            lzbc_a = 3;
+        lzbc_b -= (lzbc_b == 4);
         FPC_INVARIANT(lzbc_a < 8);
         header_a = (type_a << 3) | lzbc_a;
         lzbc_a = 8 - lzbc_a;
