@@ -22,9 +22,11 @@ int main()
 {
     fpc_context_t ctx;
     int i;
+    
     srand(123);
     for (i = 0; i != DOUBLE_COUNT; ++i)
     	data[i] = rand();
+        
     ctx.fcm_size = FPC_TABLE_SIZE_DEFAULT;
     ctx.fcm = fcm;
     ctx.dfcm_size = FPC_TABLE_SIZE_DEFAULT;
