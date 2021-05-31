@@ -1,4 +1,5 @@
 # FPC
+**Warning: This implementation fails to encode/decode some inputs.**
 ## About
 This repository contains a C implementation of FPC, Martin Burtscher and Paruj Ratanaworabhan's double-precision floating-point compression algorithm.  
   
