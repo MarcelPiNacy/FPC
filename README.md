@@ -1,5 +1,4 @@
 # FPC
-**Warning: This implementation currently fails to encode/decode some inputs.**
 ## About
 This repository contains a C implementation of FPC, Martin Burtscher and Paruj Ratanaworabhan's double-precision floating-point compression algorithm.  
   
@@ -34,7 +33,7 @@ int main()
     ctx.fcm = fcm;
     ctx.dfcm_size = FPC_TABLE_SIZE_DEFAULT;
     ctx.dfcm = dfcm;
-    ctx.hash_args = fpc_hash_args_default();
+    ctx.hash_args = FPC_DEFAULT_HASH_ARGS;
     ctx.seed = 0.0;
     
     // Compression:
