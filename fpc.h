@@ -57,7 +57,7 @@
 #define FPC32_UPPER_BOUND_METADATA(COUNT) ((size_t)((COUNT) + 1) / 2)
 #define FPC32_UPPER_BOUND_DATA(COUNT) ((size_t)(COUNT) * 4))
 #define FPC32_UPPER_BOUND(COUNT) (((size_t)((COUNT) + 1) / 2) + ((size_t)(COUNT) * 4))
-#define FPC32_DEFAULT_HASH_ARGS { 6, 24, 2, 20 }
+#define FPC32_DEFAULT_HASH_ARGS { 1, 22, 4, 23 }
 
 FPC_EXTERN_C_BEGIN
 typedef struct fpc_hash_args_t
