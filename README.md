@@ -1,7 +1,7 @@
 # FPC
 ## About
 This repository contains a C implementation of FPC, Martin Burtscher and Paruj Ratanaworabhan's double-precision floating-point compression algorithm.  
-It also contains a version of the algorithm for single-precision floats (`fpc32_*`).
+It also contains a version of the algorithm for single-precision floats (`fpc32_*`/`FPC32_*`).
   
 - Link: https://www.researchgate.net/publication/224323445_FPC_A_High-Speed_Compressor_for_Double-Precision_Floating-Point_Data
 ## Example code
