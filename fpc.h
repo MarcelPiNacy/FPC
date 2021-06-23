@@ -50,13 +50,13 @@
 
 #define FPC_LEAST_FREQUENT_LZBC 4
 #define FPC_UPPER_BOUND_METADATA(COUNT) ((size_t)((COUNT) + 1) / 2)
-#define FPC_UPPER_BOUND_DATA(COUNT) ((size_t)(COUNT) * 8))
-#define FPC_UPPER_BOUND(COUNT) (((size_t)((COUNT) + 1) / 2) + ((size_t)(COUNT) * 8))
+#define FPC_UPPER_BOUND_DATA(COUNT) ((size_t)(COUNT) * 8)
+#define FPC_UPPER_BOUND(COUNT) FPC_UPPER_BOUND_METADATA((COUNT)) + FPC_UPPER_BOUND_DATA((COUNT))
 #define FPC_DEFAULT_HASH_ARGS { 6, 48, 2, 40 }
 
 #define FPC32_UPPER_BOUND_METADATA(COUNT) ((size_t)((COUNT) + 1) / 2)
-#define FPC32_UPPER_BOUND_DATA(COUNT) ((size_t)(COUNT) * 4))
-#define FPC32_UPPER_BOUND(COUNT) (((size_t)((COUNT) + 1) / 2) + ((size_t)(COUNT) * 4))
+#define FPC32_UPPER_BOUND_DATA(COUNT) ((size_t)(COUNT) * 4)
+#define FPC32_UPPER_BOUND(COUNT) FPC32_UPPER_BOUND_METADATA((COUNT)) + FPC32_UPPER_BOUND_DATA((COUNT))
 #define FPC32_DEFAULT_HASH_ARGS { 1, 22, 4, 23 }
 
 FPC_EXTERN_C_BEGIN
@@ -508,7 +508,7 @@ FPC_ATTR size_t FPC_CALL fpc32_encode_explicit(
         FPC_STORE_COMPRESSED_FLOAT(out, tmp + 1, lzbc_b);
         out += lzbc_b;
     }
-    while (values != end)
+    if (values != end)
     {
         FPC_COPY_FLOAT(tmp, values);
         // LAST FCM STEP
