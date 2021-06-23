@@ -197,46 +197,6 @@ FPC_EXTERN_C_END
 
 #include <string.h>
 
-#define FPC_COPY_FLOAT2(OUT, IN)            \
-    FPC_INVARIANT(FPC_IS_ALIGNED(IN, 4));   \
-    FPC_INVARIANT(FPC_IS_ALIGNED(OUT, 8));  \
-    (void)memcpy((OUT), (IN), 8)
-
-#define FPC_COPY_DOUBLE2(OUT, IN)           \
-    FPC_INVARIANT(FPC_IS_ALIGNED(IN, 8));   \
-    FPC_INVARIANT(FPC_IS_ALIGNED(OUT, 16)); \
-    (void)memcpy((OUT), (IN), 16)
-
-#define FPC_COPY_FLOAT(OUT, IN)             \
-    FPC_INVARIANT(FPC_IS_ALIGNED(IN, 4));   \
-    FPC_INVARIANT(FPC_IS_ALIGNED(OUT, 4));  \
-    (void)memcpy((OUT), (IN), 4)
-
-#define FPC_COPY_DOUBLE(OUT, IN)            \
-    FPC_INVARIANT(FPC_IS_ALIGNED(IN, 8));   \
-    FPC_INVARIANT(FPC_IS_ALIGNED(OUT, 8));  \
-    (void)memcpy((OUT), (IN), 8)
-
-#define FPC_LOAD_COMPRESSED_DOUBLE(OUT, IN, COUNT)  \
-    FPC_INVARIANT(FPC_IS_ALIGNED(OUT, 8));          \
-    FPC_INVARIANT((COUNT) >= 0 && (COUNT) <= 8);    \
-    (void)memcpy((OUT), (IN), (COUNT))
-
-#define FPC_LOAD_COMPRESSED_FLOAT(OUT, IN, COUNT)   \
-    FPC_INVARIANT(FPC_IS_ALIGNED(OUT, 4));          \
-    FPC_INVARIANT((COUNT) >= 0 && (COUNT) <= 4);    \
-    (void)memcpy((OUT), (IN), (COUNT))
-
-#define FPC_STORE_COMPRESSED_DOUBLE(OUT, IN, COUNT) \
-    FPC_INVARIANT(FPC_IS_ALIGNED(IN, 8));           \
-    FPC_INVARIANT((COUNT) >= 0 && (COUNT) <= 8);    \
-    (void)memcpy((OUT), (IN), (COUNT))
-
-#define FPC_STORE_COMPRESSED_FLOAT(OUT, IN, COUNT)  \
-    FPC_INVARIANT(FPC_IS_ALIGNED(IN, 4));           \
-    FPC_INVARIANT((COUNT) >= 0 && (COUNT) <= 4);    \
-    (void)memcpy((OUT), (IN), (COUNT))
-
 FPC_EXTERN_C_BEGIN
 FPC_ATTR size_t FPC_CALL fpc_encode_explicit(
     fpc_context_t* ctx,
@@ -267,7 +227,7 @@ FPC_ATTR size_t FPC_CALL fpc_encode_explicit(
     dfcm_mod_mask = ctx->dfcm_size - 1;
     while ((end - values) >= 2)
     {
-        FPC_COPY_DOUBLE2(tmp, values);
+        (void)memcpy(tmp, values, 16);
         values += 2;
         // FCM STEP #1
         fcm_xor = tmp[0] ^ fcm_prediction;
@@ -310,14 +270,14 @@ FPC_ATTR size_t FPC_CALL fpc_encode_explicit(
         ++out_h;
         lzbc_a = 8 - lzbc_a;
         lzbc_b = 8 - lzbc_b;
-        FPC_STORE_COMPRESSED_DOUBLE(out, tmp, lzbc_a);
+        (void)memcpy(out, tmp, lzbc_a);
         out += lzbc_a;
-        FPC_STORE_COMPRESSED_DOUBLE(out, tmp + 1, lzbc_b);
+        (void)memcpy(out, tmp + 1, lzbc_b);
         out += lzbc_b;
     }
     if (values != end)
     {
-        FPC_COPY_DOUBLE(tmp, values);
+        (void)memcpy(tmp, values, 8);
         // LAST FCM STEP
         fcm_xor = tmp[0] ^ fcm_prediction;
         // LAST DFCM STEP
@@ -330,7 +290,7 @@ FPC_ATTR size_t FPC_CALL fpc_encode_explicit(
         lzbc_a -= (lzbc_a == FPC_LEAST_FREQUENT_LZBC);
         *out_h = (type_a << 3) | (lzbc_a - (lzbc_a > FPC_LEAST_FREQUENT_LZBC));
         lzbc_a = 8 - lzbc_a;
-        FPC_STORE_COMPRESSED_DOUBLE(out, tmp, lzbc_a);
+        (void)memcpy(out, tmp, lzbc_a);
         out += lzbc_a;
     }
     return (out - compressed_begin) + (value_count + 1) / 2;
@@ -356,7 +316,7 @@ FPC_ATTR void FPC_CALL fpc_decode_explicit(
     end = out_values + out_count;
     fcm_mod_mask = ctx->fcm_size - 1;
     dfcm_mod_mask = ctx->dfcm_size - 1;
-    prior_value = *(const uint64_t*)&ctx->seed;
+    (void)memcpy(&prior_value, &ctx->seed, 8);
     fcm_hash = dfcm_hash = 0;
     fcm_prediction = dfcm_prediction = 0;
     while (out_values != end)
@@ -370,7 +330,7 @@ FPC_ATTR void FPC_CALL fpc_decode_explicit(
         lzbc = 8 - lzbc;
         // READ COMPRESSED VALUE #1
         tmp[0] = 0;
-        FPC_LOAD_COMPRESSED_DOUBLE(tmp, in, lzbc);
+        (void)memcpy(tmp, in, lzbc);
         in += lzbc;
         // DECODE VALUE #1
         tmp[0] ^= (header & 8) ? dfcm_prediction : fcm_prediction;
@@ -387,7 +347,7 @@ FPC_ATTR void FPC_CALL fpc_decode_explicit(
         ++out_values;
         if (out_values == end)
         {
-            FPC_COPY_DOUBLE(out_values, tmp);
+            (void)memcpy(out_values, tmp, 8);
             return;
         }
         // DECODE HEADER #2
@@ -397,7 +357,7 @@ FPC_ATTR void FPC_CALL fpc_decode_explicit(
         lzbc = 8 - lzbc;
         // READ COMPRESSED VALUE #2
         tmp[1] = 0;
-        FPC_LOAD_COMPRESSED_DOUBLE(tmp + 1, in, lzbc);
+        (void)memcpy(tmp + 1, in, lzbc);
         in += lzbc;
         // DECODE VALUE #2
         tmp[1] ^= (header & 8) ? dfcm_prediction : fcm_prediction;
@@ -412,7 +372,7 @@ FPC_ATTR void FPC_CALL fpc_decode_explicit(
         dfcm_prediction = ctx->dfcm[dfcm_hash] + tmp[1];
         prior_value = tmp[1];
         // STORE DECOMPRESSED PAIR
-        FPC_COPY_DOUBLE2(out_values - 1, tmp);
+        (void)memcpy(out_values - 1, tmp, 16);
         ++out_values;
     }
 }
@@ -464,7 +424,7 @@ FPC_ATTR size_t FPC_CALL fpc32_encode_explicit(
     dfcm_mod_mask = ctx->dfcm_size - 1;
     while ((end - values) >= 2)
     {
-        FPC_COPY_FLOAT2(tmp, values);
+        (void)memcpy(tmp, values, 8);
         values += 2;
         // FCM STEP #1
         fcm_xor = tmp[0] ^ fcm_prediction;
@@ -503,14 +463,14 @@ FPC_ATTR size_t FPC_CALL fpc32_encode_explicit(
         ++out_h;
         lzbc_a = 4 - lzbc_a;
         lzbc_b = 4 - lzbc_b;
-        FPC_STORE_COMPRESSED_FLOAT(out, tmp, lzbc_a);
+        (void)memcpy(out, tmp, lzbc_a);
         out += lzbc_a;
-        FPC_STORE_COMPRESSED_FLOAT(out, tmp + 1, lzbc_b);
+        (void)memcpy(out, tmp + 1, lzbc_b);
         out += lzbc_b;
     }
     if (values != end)
     {
-        FPC_COPY_FLOAT(tmp, values);
+        (void)memcpy(tmp, values, 4);
         // LAST FCM STEP
         fcm_xor = tmp[0] ^ fcm_prediction;
         // LAST DFCM STEP
@@ -523,7 +483,7 @@ FPC_ATTR size_t FPC_CALL fpc32_encode_explicit(
         lzbc_a -= (lzbc_a == FPC_LEAST_FREQUENT_LZBC);
         *out_h = (type_a << 3) | (lzbc_a - (lzbc_a > FPC_LEAST_FREQUENT_LZBC));
         lzbc_a = 4 - lzbc_a;
-        FPC_STORE_COMPRESSED_FLOAT(out, tmp, lzbc_a);
+        (void)memcpy(out, tmp, lzbc_a);
         out += lzbc_a;
     }
     return (out - (uint8_t*)out_compressed) + (value_count + 1) / 2;
@@ -549,7 +509,7 @@ FPC_ATTR void FPC_CALL fpc32_decode_explicit(
     end = out_values + out_count;
     fcm_mod_mask = ctx->fcm_size - 1;
     dfcm_mod_mask = ctx->dfcm_size - 1;
-    FPC_COPY_FLOAT(&prior_value, &ctx->seed);
+    (void)memcpy(&prior_value, &ctx->seed, 4);
     fcm_hash = dfcm_hash = 0;
     fcm_prediction = dfcm_prediction = 0;
     while (out_values != end)
@@ -562,7 +522,7 @@ FPC_ATTR void FPC_CALL fpc32_decode_explicit(
         lzbc = 4 - lzbc;
         // READ COMPRESSED VALUE #1
         tmp[0] = 0;
-        FPC_LOAD_COMPRESSED_FLOAT(tmp, in, lzbc);
+        (void)memcpy(tmp, in, lzbc);
         in += lzbc;
         // DECODE VALUE #1
         tmp[0] ^= (header & 8) ? dfcm_prediction : fcm_prediction;
@@ -579,7 +539,7 @@ FPC_ATTR void FPC_CALL fpc32_decode_explicit(
         ++out_values;
         if (out_values == end)
         {
-            FPC_COPY_FLOAT(out_values, tmp);
+            (void)memcpy(out_values, tmp, 4);
             return;
         }
         // DECODE HEADER #2
@@ -588,7 +548,7 @@ FPC_ATTR void FPC_CALL fpc32_decode_explicit(
         lzbc = 4 - lzbc;
         // READ COMPRESSED VALUE #2
         tmp[1] = 0;
-        FPC_LOAD_COMPRESSED_FLOAT(tmp + 1, in, lzbc);
+        (void)memcpy(tmp + 1, in, lzbc);
         in += lzbc;
         // DECODE VALUE #2
         tmp[1] ^= (header & 8) ? dfcm_prediction : fcm_prediction;
@@ -603,7 +563,7 @@ FPC_ATTR void FPC_CALL fpc32_decode_explicit(
         dfcm_prediction = ctx->dfcm[dfcm_hash] + tmp[1];
         prior_value = tmp[1];
         // STORE DECOMPRESSED PAIR
-        FPC_COPY_FLOAT2(out_values - 1, tmp);
+        (void)memcpy(out_values - 1, tmp, 8);
         ++out_values;
     }
 }
