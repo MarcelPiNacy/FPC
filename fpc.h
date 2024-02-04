@@ -98,6 +98,9 @@ typedef struct fpc32_context_t
 
 typedef fpc32_context_t* FPC_RESTRICT fpc32_context_ptr_t;
 
+FPC_ATTR void FPC_CALL fpc_context_reset(
+  fpc_context_ptr_t ctx);
+
 FPC_ATTR size_t FPC_CALL fpc_encode_size(
   fpc_context_ptr_t ctx,
   const double* FPC_RESTRICT values,
@@ -128,6 +131,9 @@ FPC_ATTR void FPC_CALL fpc_decode_separate(
   const void* FPC_RESTRICT compressed,
   double* FPC_RESTRICT out_values,
   size_t out_count);
+
+FPC_ATTR void FPC_CALL fpc32_context_reset(
+  fpc32_context_ptr_t ctx);
 
 FPC_ATTR size_t FPC_CALL fpc32_encode_size(
   fpc32_context_ptr_t ctx,
@@ -164,6 +170,7 @@ FPC_ATTR void FPC_CALL fpc32_decode(
 
 
 
+#define FPC_IMPLEMENTATION
 #ifdef FPC_IMPLEMENTATION
 
 #if __has_include(<stdbool.h>)
@@ -307,6 +314,13 @@ FPC_ATTR void FPC_CALL fpc32_decode(
 #ifndef FPC_STORE_NT_U64
   #define FPC_STORE_NT_U64(P, V) (*(uint64_t* FPC_RESTRICT)(P)) = (V)
 #endif
+
+FPC_ATTR void FPC_CALL fpc_context_reset(
+  fpc_context_ptr_t ctx)
+{
+  FPC_MEMSET(ctx->fcm, 0, ctx->fcm_size * sizeof(uint64_t));
+  FPC_MEMSET(ctx->dfcm, 0, ctx->dfcm_size * sizeof(uint64_t));
+}
 
 FPC_ATTR size_t FPC_CALL fpc_encode_size(
   fpc_context_ptr_t ctx,
@@ -527,6 +541,13 @@ FPC_ATTR void FPC_CALL fpc_decode(
     (const uint8_t* FPC_RESTRICT)compressed + FPC_UPPER_BOUND_METADATA(out_count),
     out_values,
     out_count);
+}
+
+FPC_ATTR void FPC_CALL fpc32_context_reset(
+  fpc32_context_ptr_t ctx)
+{
+  FPC_MEMSET(ctx->fcm, 0, ctx->fcm_size * sizeof(uint32_t));
+  FPC_MEMSET(ctx->dfcm, 0, ctx->dfcm_size * sizeof(uint32_t));
 }
 
 FPC_ATTR size_t FPC_CALL fpc32_encode_size(
