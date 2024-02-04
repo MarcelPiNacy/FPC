@@ -11,22 +11,20 @@
 #define FCM_SIZE (1 << 15)
 #define DFCM_SIZE (1 << 15)
 
-double source[VALUE_COUNT];
-uint8_t encoded[FPC_UPPER_BOUND(VALUE_COUNT)];
-double decoded[VALUE_COUNT];
-uint64_t fcm[FCM_SIZE];
-uint64_t dfcm[DFCM_SIZE];
+double source_f64[VALUE_COUNT];
+uint8_t encoded_f64[FPC_UPPER_BOUND(VALUE_COUNT)];
+double decoded_f64[VALUE_COUNT];
+uint64_t fcm_f64[FCM_SIZE];
+uint64_t dfcm_f64[DFCM_SIZE];
 
-int main(
-  int argc,
-  const char** argv)
+void test()
 {
   fpc_context_t c;
   size_t i, source_size, encoded_size;
-  fpc_hash_args_t default_args = FPC_DEFAULT_HASH_ARGS;
+  const fpc_hash_args_t default_args = FPC_DEFAULT_HASH_ARGS;
 
-  c.fcm = fcm;
-  c.dfcm = dfcm;
+  c.fcm = fcm_f64;
+  c.dfcm = dfcm_f64;
   c.fcm_size = FCM_SIZE;
   c.dfcm_size = DFCM_SIZE;
   c.delta_seed = 0.0;
@@ -35,20 +33,62 @@ int main(
   srand(123);
 
   for (i = 0; i != VALUE_COUNT; ++i)
-    source[i] = (double)rand() / (double)rand();
+    source_f64[i] = (double)rand() / (double)rand();
 
-  memset(fcm, 0, sizeof(fcm));
-  memset(dfcm, 0, sizeof(dfcm));
-  encoded_size = fpc_encode(&c, source, VALUE_COUNT, encoded);
+  fpc_context_reset(&c);
+  encoded_size = fpc_encode(&c, source_f64, VALUE_COUNT, encoded_f64);
 
-  memset(fcm, 0, sizeof(fcm));
-  memset(dfcm, 0, sizeof(dfcm));
-  fpc_decode(&c, encoded, decoded, VALUE_COUNT);
+  fpc_context_reset(&c);
+  fpc_decode(&c, encoded_f64, decoded_f64, VALUE_COUNT);
 
   for (i = 0; i != VALUE_COUNT; ++i)
-    assert(source[i] == decoded[i]);
-  
+    assert(source_f64[i] == decoded_f64[i]);
+
   source_size = VALUE_COUNT * sizeof(double);
-  printf("Test succeeded (%llu doubles, %f compression ratio)", (unsigned long long)VALUE_COUNT, (double)encoded_size / (double)source_size);
+  printf("64-bit test succeeded (%llu doubles, %f compression ratio)\n", (unsigned long long)VALUE_COUNT, (double)encoded_size / (double)source_size);
+}
+
+float source_f32[VALUE_COUNT];
+uint8_t encoded_f32[FPC32_UPPER_BOUND(VALUE_COUNT)];
+float decoded_f32[VALUE_COUNT];
+uint32_t fcm_f32[FCM_SIZE];
+uint32_t dfcm_f32[DFCM_SIZE];
+
+void test32()
+{
+  fpc32_context_t c;
+  size_t i, source_size, encoded_size;
+  const fpc_hash_args_t default_args = FPC32_DEFAULT_HASH_ARGS;
+
+  c.fcm = fcm_f32;
+  c.dfcm = dfcm_f32;
+  c.fcm_size = FCM_SIZE;
+  c.dfcm_size = DFCM_SIZE;
+  c.delta_seed = 0.0;
+  c.hash_args = default_args;
+
+  srand(123);
+  for (i = 0; i != VALUE_COUNT; ++i)
+    source_f64[i] = (float)rand() / (float)rand();
+
+  fpc32_context_reset(&c);
+  encoded_size = fpc32_encode(&c, source_f32, VALUE_COUNT, encoded_f64);
+
+  fpc32_context_reset(&c);
+  fpc32_decode(&c, encoded_f32, decoded_f32, VALUE_COUNT);
+
+  for (i = 0; i != VALUE_COUNT; ++i)
+    assert(source_f32[i] == decoded_f32[i]);
+
+  source_size = VALUE_COUNT * sizeof(double);
+  printf("32-bit test succeeded (%llu doubles, %f compression ratio)\n", (unsigned long long)VALUE_COUNT, (float)encoded_size / (float)source_size);
+}
+
+int main(
+  int argc,
+  const char** argv)
+{
+  test();
+  test32();
   return 0;
 }
