@@ -119,33 +119,33 @@ FPC_ATTR void FPC_CALL fpc_context_reset(
 
 FPC_ATTR size_t FPC_CALL fpc_encode_size(
   fpc_context_ptr_t ctx,
-  const double* FPC_RESTRICT values,
-  size_t value_count);
+  const double* FPC_RESTRICT in,
+  size_t count);
 
 FPC_ATTR size_t FPC_CALL fpc_encode(
   fpc_context_ptr_t ctx,
-  const double* FPC_RESTRICT values,
-  size_t value_count,
-  void* FPC_RESTRICT out_compressed);
+  const double* FPC_RESTRICT in,
+  size_t count,
+  void* FPC_RESTRICT out);
 
 FPC_ATTR size_t FPC_CALL fpc_encode_separate(
   fpc_context_ptr_t ctx,
-  const double* FPC_RESTRICT values,
-  size_t value_count,
+  const double* FPC_RESTRICT in,
+  size_t count,
   void* FPC_RESTRICT out_headers,
-  void* FPC_RESTRICT out_compressed);
+  void* FPC_RESTRICT out_data);
 
 FPC_ATTR void FPC_CALL fpc_decode(
   fpc_context_ptr_t ctx,
-  const void* FPC_RESTRICT compressed,
-  double* FPC_RESTRICT out_values,
+  const void* FPC_RESTRICT in,
+  double* FPC_RESTRICT out,
   size_t out_count);
 
 FPC_ATTR void FPC_CALL fpc_decode_separate(
   fpc_context_ptr_t ctx,
   const void* FPC_RESTRICT headers,
-  const void* FPC_RESTRICT compressed,
-  double* FPC_RESTRICT out_values,
+  const void* FPC_RESTRICT in,
+  double* FPC_RESTRICT out,
   size_t out_count);
 
 FPC_ATTR void FPC_CALL fpc32_context_init(
@@ -169,33 +169,33 @@ FPC_ATTR void FPC_CALL fpc32_context_reset(
 
 FPC_ATTR size_t FPC_CALL fpc32_encode_size(
   fpc32_context_ptr_t ctx,
-  const float* FPC_RESTRICT values,
-  size_t value_count);
+  const float* FPC_RESTRICT in,
+  size_t count);
 
 FPC_ATTR size_t FPC_CALL fpc32_encode_separate(
   fpc32_context_ptr_t ctx,
-  const float* FPC_RESTRICT values,
-  size_t value_count,
+  const float* FPC_RESTRICT in,
+  size_t count,
   void* FPC_RESTRICT out_headers,
-  void* FPC_RESTRICT out_compressed);
+  void* FPC_RESTRICT out_data);
 
 FPC_ATTR size_t FPC_CALL fpc32_encode(
   fpc32_context_ptr_t ctx,
-  const float* FPC_RESTRICT values,
-  size_t value_count,
-  void* FPC_RESTRICT out_compressed);
+  const float* FPC_RESTRICT in,
+  size_t count,
+  void* FPC_RESTRICT out);
 
 FPC_ATTR void FPC_CALL fpc32_decode_separate(
   fpc32_context_ptr_t ctx,
   const void* FPC_RESTRICT headers,
-  const void* FPC_RESTRICT compressed,
-  float* FPC_RESTRICT out_values,
+  const void* FPC_RESTRICT in,
+  float* FPC_RESTRICT out,
   size_t out_count);
 
 FPC_ATTR void FPC_CALL fpc32_decode(
   fpc32_context_ptr_t ctx,
-  const void* FPC_RESTRICT compressed,
-  float* FPC_RESTRICT out_values,
+  const void* FPC_RESTRICT in,
+  float* FPC_RESTRICT out,
   size_t out_count);
 
 #endif
@@ -387,36 +387,36 @@ FPC_ATTR void FPC_CALL fpc_context_reset(
 
 FPC_ATTR size_t FPC_CALL fpc_encode_size(
   fpc_context_ptr_t ctx,
-  const double* FPC_RESTRICT values,
-  size_t value_count)
+  const double* FPC_RESTRICT in,
+  size_t count)
 {
   const size_t fcm_mod_mask = ctx->fcm_size - 1;
   const size_t dfcm_mod_mask = ctx->dfcm_size - 1;
-  const double* FPC_RESTRICT const end = values + value_count;
+  const double* FPC_RESTRICT const end = in + count;
   size_t size;
   uint64_t
     value, value_xor,
     fcm_hash, dfcm_hash,
     fcm_prediction, dfcm_prediction,
-    delta, prior_value,
+    delta, last,
     fcm_xor, dfcm_xor;
   uint_fast8_t type, lzbc, i;
   size = 0;
-  if (values == end)
+  if (in == end)
     return size;
-  prior_value = *(const uint64_t* FPC_RESTRICT)&ctx->delta_seed;
+  last = *(const uint64_t* FPC_RESTRICT)&ctx->delta_seed;
   fcm_hash = dfcm_hash = fcm_prediction = dfcm_prediction = 0;
   do
   {
     #ifdef __clang__
-      #pragma clang unroll(2)
+      #pragma clang unroll(full)
     #elif defined(__GNUC__)
       #pragma GCC unroll(2)
     #endif
     for (i = 0; i != 2; ++i)
     {
-      value = FPC_LOAD_NT_U64(values);
-      ++values;
+      value = FPC_LOAD_NT_U64(in);
+      ++in;
       fcm_xor = value ^ fcm_prediction;
       dfcm_xor = value ^ dfcm_prediction;
       type = fcm_xor > dfcm_xor;
@@ -426,10 +426,10 @@ FPC_ATTR size_t FPC_CALL fpc_encode_size(
       lzbc = 8 - lzbc;
       FPC_INVARIANT(lzbc <= 8);
       size += lzbc;
-      FPC_UNLIKELY_IF (values == end)
+      FPC_UNLIKELY_IF (in == end)
         break;
-      delta = value - prior_value;
-      prior_value = value;
+      delta = value - last;
+      last = value;
       ctx->fcm[fcm_hash] = value;
       FPC_FCM_HASH_UPDATE(fcm_hash, value);
       fcm_prediction = ctx->fcm[fcm_hash];
@@ -439,54 +439,54 @@ FPC_ATTR size_t FPC_CALL fpc_encode_size(
       dfcm_prediction += value;
     }
     ++size;
-  } while (values != end);
+  } while (in != end);
   return size;
 }
 
 FPC_ATTR size_t FPC_CALL fpc_encode_separate(
   fpc_context_ptr_t ctx,
-  const double* FPC_RESTRICT values,
-  size_t value_count,
+  const double* FPC_RESTRICT in,
+  size_t count,
   void* FPC_RESTRICT out_headers,
-  void* FPC_RESTRICT out_compressed)
+  void* FPC_RESTRICT out_data)
 {
   const size_t fcm_mod_mask = ctx->fcm_size - 1;
   const size_t dfcm_mod_mask = ctx->dfcm_size - 1;
-  const double* FPC_RESTRICT const end = values + value_count;
-  uint8_t* FPC_RESTRICT compressed_begin;
-  uint8_t* FPC_RESTRICT out;
+  const double* FPC_RESTRICT const end = in + count;
+  uint8_t* FPC_RESTRICT out_begin;
+  uint8_t* FPC_RESTRICT out_b;
   uint8_t* FPC_RESTRICT out_h;
   uint64_t
     value, value_xor,
     fcm_hash, dfcm_hash,
     fcm_prediction, dfcm_prediction,
-    delta, prior_value,
+    delta, last,
     fcm_xor, dfcm_xor;
   uint_fast8_t
     type, lzbc,
     header, i;
-  FPC_INVARIANT((uint8_t* FPC_RESTRICT)out_headers != (uint8_t* FPC_RESTRICT)out_compressed);
+  FPC_INVARIANT((uint8_t* FPC_RESTRICT)out_headers != (uint8_t* FPC_RESTRICT)out_data);
   FPC_INVARIANT(
-    (uint8_t* FPC_RESTRICT)out_headers < (uint8_t* FPC_RESTRICT)out_compressed ||
-    (uint8_t* FPC_RESTRICT)out_headers + value_count >= (uint8_t* FPC_RESTRICT)out_compressed);
-  if (values == end)
+    (uint8_t* FPC_RESTRICT)out_headers < (uint8_t* FPC_RESTRICT)out_data ||
+    (uint8_t* FPC_RESTRICT)out_headers + count >= (uint8_t* FPC_RESTRICT)out_data);
+  if (in == end)
     return 0;
   out_h = (uint8_t * FPC_RESTRICT)out_headers;
-  compressed_begin = out = (uint8_t* FPC_RESTRICT)out_compressed;
-  prior_value = *(const uint64_t* FPC_RESTRICT)&ctx->delta_seed;
+  out_begin = out_b = (uint8_t* FPC_RESTRICT)out_data;
+  last = *(const uint64_t* FPC_RESTRICT)&ctx->delta_seed;
   fcm_hash = dfcm_hash = fcm_prediction = dfcm_prediction = 0;
   do
   {
     header = 0;
     #ifdef __clang__
-      #pragma clang unroll(2)
+      #pragma clang unroll(full)
     #elif defined(__GNUC__)
       #pragma GCC unroll(2)
     #endif
     for (i = 0; i != 2; ++i)
     {
-      value = FPC_LOAD_NT_U64(values);
-      ++values;
+      value = FPC_LOAD_NT_U64(in);
+      ++in;
       fcm_xor = value ^ fcm_prediction;
       dfcm_xor = value ^ dfcm_prediction;
       type = fcm_xor > dfcm_xor;
@@ -496,12 +496,12 @@ FPC_ATTR size_t FPC_CALL fpc_encode_separate(
       header |= (((type << 3) | lzbc)) << (i << 2);
       lzbc = 8 - lzbc;
       FPC_INVARIANT(lzbc <= 8);
-      FPC_MEMCPY(out, &value_xor, lzbc);
-      out += lzbc;
-      FPC_UNLIKELY_IF (values == end)
+      FPC_MEMCPY(out_b, &value_xor, lzbc);
+      out_b += lzbc;
+      FPC_UNLIKELY_IF (in == end)
         break;
-      delta = value - prior_value;
-      prior_value = value;
+      delta = value - last;
+      last = value;
       ctx->fcm[fcm_hash] = value;
       FPC_FCM_HASH_UPDATE(fcm_hash, value);
       fcm_prediction = ctx->fcm[fcm_hash];
@@ -512,42 +512,42 @@ FPC_ATTR size_t FPC_CALL fpc_encode_separate(
     }
     *out_h = header;
     ++out_h;
-  } while (values != end);
-  return (size_t)(out - compressed_begin) + (value_count + 1) / 2;
+  } while (in != end);
+  return (size_t)(out_b - out_begin) + (count + 1) / 2;
 }
 
 FPC_ATTR void FPC_CALL fpc_decode_separate(
   fpc_context_ptr_t ctx,
   const void* FPC_RESTRICT headers,
-  const void* FPC_RESTRICT compressed,
-  double* FPC_RESTRICT out_values,
+  const void* FPC_RESTRICT in,
+  double* FPC_RESTRICT out,
   size_t out_count)
 {
-  double* FPC_RESTRICT const end = out_values + out_count;
+  double* FPC_RESTRICT const end = out + out_count;
   const size_t fcm_mod_mask = ctx->fcm_size - 1;
   const size_t dfcm_mod_mask = ctx->dfcm_size - 1;
-  const uint8_t* FPC_RESTRICT in;
-  const uint8_t* FPC_RESTRICT in_headers;
+  const uint8_t* FPC_RESTRICT in_data;
+  const uint8_t* FPC_RESTRICT in_h;
   uint64_t
     fcm_hash, dfcm_hash,
     fcm_prediction, dfcm_prediction,
-    delta, prior_value,
+    delta, last,
     value;
   uint_fast8_t
     type, lzbc,
     header, i;
-  if (out_values == end)
+  if (out == end)
     return;
-  in = (const uint8_t* FPC_RESTRICT)compressed;
-  in_headers = (const uint8_t* FPC_RESTRICT)headers;
-  prior_value = *(const uint64_t* FPC_RESTRICT)&ctx->delta_seed;
+  in_data = (const uint8_t* FPC_RESTRICT)in;
+  in_h = (const uint8_t* FPC_RESTRICT)headers;
+  last = *(const uint64_t* FPC_RESTRICT)&ctx->delta_seed;
   fcm_hash = dfcm_hash = fcm_prediction = dfcm_prediction = 0;
   do
   {
-    header = *in_headers;
-    ++in_headers;
+    header = *in_h;
+    ++in_h;
     #ifdef __clang__
-      #pragma clang unroll(2)
+      #pragma clang unroll(full)
     #elif defined(__GNUC__)
       #pragma GCC unroll(2)
     #endif
@@ -558,15 +558,15 @@ FPC_ATTR void FPC_CALL fpc_decode_separate(
       lzbc = 8 - lzbc;
       header >>= 4;
       value = 0;
-      FPC_MEMCPY(&value, in, lzbc);
+      FPC_MEMCPY(&value, in_data, lzbc);
       value ^= type ? dfcm_prediction : fcm_prediction;
-      FPC_STORE_NT_U64(out_values, value);
-      ++out_values;
-      FPC_UNLIKELY_IF (out_values == end)
+      FPC_STORE_NT_U64(out, value);
+      ++out;
+      FPC_UNLIKELY_IF (out == end)
         return;
-      in += lzbc;
-      delta = value - prior_value;
-      prior_value = value;
+      in_data += lzbc;
+      delta = value - last;
+      last = value;
       ctx->fcm[fcm_hash] = value;
       FPC_FCM_HASH_UPDATE(fcm_hash, value);
       fcm_prediction = ctx->fcm[fcm_hash];
@@ -575,34 +575,34 @@ FPC_ATTR void FPC_CALL fpc_decode_separate(
       dfcm_prediction = ctx->dfcm[dfcm_hash];
       dfcm_prediction += value;
     }
-  } while (out_values != end);
+  } while (out != end);
 }
 
 FPC_ATTR size_t FPC_CALL fpc_encode(
   fpc_context_ptr_t ctx,
-  const double* FPC_RESTRICT values,
-  size_t value_count,
-  void* FPC_RESTRICT out_compressed)
+  const double* FPC_RESTRICT in,
+  size_t count,
+  void* FPC_RESTRICT out)
 {
   return fpc_encode_separate(
     ctx,
-    values,
-    value_count,
-    out_compressed,
-    (uint8_t* FPC_RESTRICT)out_compressed + FPC_UPPER_BOUND_METADATA(value_count));
+    in,
+    count,
+    out,
+    (uint8_t* FPC_RESTRICT)out + FPC_UPPER_BOUND_METADATA(count));
 }
 
 FPC_ATTR void FPC_CALL fpc_decode(
   fpc_context_ptr_t ctx,
-  const void* FPC_RESTRICT compressed,
-  double* FPC_RESTRICT out_values,
+  const void* FPC_RESTRICT in,
+  double* FPC_RESTRICT out,
   size_t out_count)
 {
   fpc_decode_separate(
     ctx,
-    compressed,
-    (const uint8_t* FPC_RESTRICT)compressed + FPC_UPPER_BOUND_METADATA(out_count),
-    out_values,
+    in,
+    (const uint8_t* FPC_RESTRICT)in + FPC_UPPER_BOUND_METADATA(out_count),
+    out,
     out_count);
 }
 
@@ -645,36 +645,36 @@ FPC_ATTR void FPC_CALL fpc32_context_reset(
 
 FPC_ATTR size_t FPC_CALL fpc32_encode_size(
   fpc32_context_ptr_t ctx,
-  const float* FPC_RESTRICT values,
-  size_t value_count)
+  const float* FPC_RESTRICT in,
+  size_t count)
 {
   const size_t fcm_mod_mask = ctx->fcm_size - 1;
   const size_t dfcm_mod_mask = ctx->dfcm_size - 1;
-  const float* FPC_RESTRICT const end = values + value_count;
+  const float* FPC_RESTRICT const end = in + count;
   size_t size;
   uint32_t
     value, value_xor,
     fcm_hash, dfcm_hash,
     fcm_prediction, dfcm_prediction,
-    delta, prior_value,
+    delta, last,
     fcm_xor, dfcm_xor;
   uint_fast8_t type, lzbc, i;
   size = 0;
-  if (values == end)
+  if (in == end)
     return size;
-  prior_value = *(const uint32_t* FPC_RESTRICT)&ctx->delta_seed;
+  last = *(const uint32_t* FPC_RESTRICT)&ctx->delta_seed;
   fcm_hash = dfcm_hash = fcm_prediction = dfcm_prediction = 0;
   do
   {
     #ifdef __clang__
-      #pragma clang unroll(2)
+      #pragma clang unroll(full)
     #elif defined(__GNUC__)
       #pragma GCC unroll(2)
     #endif
     for (i = 0; i != 2; ++i)
     {
-      value = FPC_LOAD_NT_U64(values);
-      ++values;
+      value = FPC_LOAD_NT_U64(in);
+      ++in;
       fcm_xor = value ^ fcm_prediction;
       dfcm_xor = value ^ dfcm_prediction;
       type = fcm_xor > dfcm_xor;
@@ -684,10 +684,10 @@ FPC_ATTR size_t FPC_CALL fpc32_encode_size(
       lzbc = 4 - lzbc;
       FPC_INVARIANT(lzbc <= 4);
       size += lzbc;
-      FPC_UNLIKELY_IF (values == end)
+      FPC_UNLIKELY_IF (in == end)
         break;
-      delta = value - prior_value;
-      prior_value = value;
+      delta = value - last;
+      last = value;
       ctx->fcm[fcm_hash] = value;
       FPC_FCM_HASH_UPDATE(fcm_hash, value);
       fcm_prediction = ctx->fcm[fcm_hash];
@@ -697,54 +697,54 @@ FPC_ATTR size_t FPC_CALL fpc32_encode_size(
       dfcm_prediction += value;
     }
     ++size;
-  } while (values != end);
+  } while (in != end);
   return size;
 }
 
 FPC_ATTR size_t FPC_CALL fpc32_encode_separate(
   fpc32_context_ptr_t ctx,
-  const float* FPC_RESTRICT values,
-  size_t value_count,
+  const float* FPC_RESTRICT in,
+  size_t count,
   void* FPC_RESTRICT out_headers,
-  void* FPC_RESTRICT out_compressed)
+  void* FPC_RESTRICT out_data)
 {
   const size_t fcm_mod_mask = ctx->fcm_size - 1;
   const size_t dfcm_mod_mask = ctx->dfcm_size - 1;
-  const float* FPC_RESTRICT const end = values + value_count;
-  uint8_t* FPC_RESTRICT compressed_begin;
-  uint8_t* FPC_RESTRICT out;
+  const float* FPC_RESTRICT const end = in + count;
+  uint8_t* FPC_RESTRICT out_begin;
+  uint8_t* FPC_RESTRICT out_b;
   uint8_t* FPC_RESTRICT out_h;
   uint32_t
     value, value_xor,
     fcm_hash, dfcm_hash,
     fcm_prediction, dfcm_prediction,
-    delta, prior_value,
+    delta, last,
     fcm_xor, dfcm_xor;
   uint_fast8_t
     type, lzbc,
     header, i;
-  FPC_INVARIANT((uint8_t* FPC_RESTRICT)out_headers != (uint8_t* FPC_RESTRICT)out_compressed);
+  FPC_INVARIANT((uint8_t* FPC_RESTRICT)out_headers != (uint8_t* FPC_RESTRICT)out_data);
   FPC_INVARIANT(
-    (uint8_t* FPC_RESTRICT)out_headers < (uint8_t* FPC_RESTRICT)out_compressed ||
-    (uint8_t* FPC_RESTRICT)out_headers + value_count >= (uint8_t* FPC_RESTRICT)out_compressed);
-  if (values == end)
+    (uint8_t* FPC_RESTRICT)out_headers < (uint8_t* FPC_RESTRICT)out_data ||
+    (uint8_t* FPC_RESTRICT)out_headers + count >= (uint8_t* FPC_RESTRICT)out_data);
+  if (in == end)
     return 0;
   out_h = (uint8_t * FPC_RESTRICT)out_headers;
-  compressed_begin = out = (uint8_t* FPC_RESTRICT)out_compressed;
-  prior_value = *(const uint32_t* FPC_RESTRICT)&ctx->delta_seed;
+  out_begin = out_b = (uint8_t* FPC_RESTRICT)out_data;
+  last = *(const uint32_t* FPC_RESTRICT)&ctx->delta_seed;
   fcm_hash = dfcm_hash = fcm_prediction = dfcm_prediction = 0;
   do
   {
     header = 0;
     #ifdef __clang__
-      #pragma clang unroll(2)
+      #pragma clang unroll(full)
     #elif defined(__GNUC__)
       #pragma GCC unroll(2)
     #endif
     for (i = 0; i != 2; ++i)
     {
-      value = FPC_LOAD_NT_U32(values);
-      ++values;
+      value = FPC_LOAD_NT_U32(in);
+      ++in;
       fcm_xor = value ^ fcm_prediction;
       dfcm_xor = value ^ dfcm_prediction;
       type = fcm_xor > dfcm_xor;
@@ -753,12 +753,12 @@ FPC_ATTR size_t FPC_CALL fpc32_encode_separate(
       header |= (((type << 3) | lzbc)) << (i << 2);
       lzbc = 4 - lzbc;
       FPC_INVARIANT(lzbc <= 4);
-      FPC_MEMCPY(out, &value_xor, lzbc);
-      out += lzbc;
-      FPC_UNLIKELY_IF (values == end)
+      FPC_MEMCPY(out_b, &value_xor, lzbc);
+      out_b += lzbc;
+      FPC_UNLIKELY_IF (in == end)
         break;
-      delta = value - prior_value;
-      prior_value = value;
+      delta = value - last;
+      last = value;
       ctx->fcm[fcm_hash] = value;
       FPC_FCM_HASH_UPDATE(fcm_hash, value);
       fcm_prediction = ctx->fcm[fcm_hash];
@@ -769,42 +769,42 @@ FPC_ATTR size_t FPC_CALL fpc32_encode_separate(
     }
     *out_h = header;
     ++out_h;
-  } while (values != end);
-  return (size_t)(out - compressed_begin) + (value_count + 1) / 2;
+  } while (in != end);
+  return (size_t)(out_b - out_begin) + (count + 1) / 2;
 }
 
 FPC_ATTR void FPC_CALL fpc32_decode_separate(
   fpc32_context_ptr_t ctx,
   const void* FPC_RESTRICT headers,
-  const void* FPC_RESTRICT compressed,
-  float* FPC_RESTRICT out_values,
+  const void* FPC_RESTRICT in,
+  float* FPC_RESTRICT out,
   size_t out_count)
 {
-  float* FPC_RESTRICT const end = out_values + out_count;
+  float* FPC_RESTRICT const end = out + out_count;
   const size_t fcm_mod_mask = ctx->fcm_size - 1;
   const size_t dfcm_mod_mask = ctx->dfcm_size - 1;
-  const uint8_t* FPC_RESTRICT in;
-  const uint8_t* FPC_RESTRICT in_headers;
+  const uint8_t* FPC_RESTRICT in_data;
+  const uint8_t* FPC_RESTRICT in_h;
   uint32_t
     fcm_hash, dfcm_hash,
     fcm_prediction, dfcm_prediction,
-    delta, prior_value,
+    delta, last,
     value;
   uint_fast8_t
     type, lzbc,
     header, i;
-  if (out_values == end)
+  if (out == end)
     return;
-  in = (const uint8_t* FPC_RESTRICT)compressed;
-  in_headers = (const uint8_t* FPC_RESTRICT)headers;
-  prior_value = *(const uint32_t* FPC_RESTRICT)&ctx->delta_seed;
+  in_data = (const uint8_t* FPC_RESTRICT)in;
+  in_h = (const uint8_t* FPC_RESTRICT)headers;
+  last = *(const uint32_t* FPC_RESTRICT)&ctx->delta_seed;
   fcm_hash = dfcm_hash = fcm_prediction = dfcm_prediction = 0;
   do
   {
-    header = *in_headers;
-    ++in_headers;
+    header = *in_h;
+    ++in_h;
     #ifdef __clang__
-      #pragma clang unroll(2)
+      #pragma clang unroll(full)
     #elif defined(__GNUC__)
       #pragma GCC unroll(2)
     #endif
@@ -815,15 +815,15 @@ FPC_ATTR void FPC_CALL fpc32_decode_separate(
       lzbc = 4 - lzbc;
       header >>= 4;
       value = 0;
-      FPC_MEMCPY(&value, in, lzbc);
+      FPC_MEMCPY(&value, in_data, lzbc);
       value ^= type ? dfcm_prediction : fcm_prediction;
-      FPC_STORE_NT_U32(out_values, value);
-      ++out_values;
-      FPC_UNLIKELY_IF (out_values == end)
+      FPC_STORE_NT_U32(out, value);
+      ++out;
+      FPC_UNLIKELY_IF (out == end)
         return;
-      in += lzbc;
-      delta = value - prior_value;
-      prior_value = value;
+      in_data += lzbc;
+      delta = value - last;
+      last = value;
       ctx->fcm[fcm_hash] = value;
       FPC_FCM_HASH_UPDATE(fcm_hash, value);
       fcm_prediction = ctx->fcm[fcm_hash];
@@ -832,34 +832,34 @@ FPC_ATTR void FPC_CALL fpc32_decode_separate(
       dfcm_prediction = ctx->dfcm[dfcm_hash];
       dfcm_prediction += value;
     }
-  } while (out_values != end);
+  } while (out != end);
 }
 
 FPC_ATTR size_t FPC_CALL fpc32_encode(
   fpc32_context_ptr_t ctx,
-  const float* FPC_RESTRICT values,
-  size_t value_count,
-  void* FPC_RESTRICT out_compressed)
+  const float* FPC_RESTRICT in,
+  size_t count,
+  void* FPC_RESTRICT out)
 {
   return fpc32_encode_separate(
     ctx,
-    values,
-    value_count,
-    out_compressed,
-    (uint8_t* FPC_RESTRICT)out_compressed + FPC32_UPPER_BOUND_METADATA(value_count));
+    in,
+    count,
+    out,
+    (uint8_t* FPC_RESTRICT)out + FPC32_UPPER_BOUND_METADATA(count));
 }
 
 FPC_ATTR void FPC_CALL fpc32_decode(
   fpc32_context_ptr_t ctx,
-  const void* FPC_RESTRICT compressed,
-  float* FPC_RESTRICT out_values,
+  const void* FPC_RESTRICT in,
+  float* FPC_RESTRICT out,
   size_t out_count)
 {
   fpc32_decode_separate(
     ctx,
-    compressed,
-    (const uint8_t* FPC_RESTRICT)compressed + FPC32_UPPER_BOUND_METADATA(out_count),
-    out_values,
+    in,
+    (const uint8_t* FPC_RESTRICT)in + FPC32_UPPER_BOUND_METADATA(out_count),
+    out,
     out_count);
 }
 
