@@ -31,14 +31,14 @@ int main()
     srand(123);
     for (i = 0; i != DOUBLE_COUNT; ++i)
     	data[i] = (double)rand();
-        
-    ctx.fcm = fcm;
-    ctx.dfcm = dfcm;
-    ctx.fcm_size = TABLE_SIZE;
-    ctx.dfcm_size = TABLE_SIZE;
-    ctx.hash_args = FPC_DEFAULT_HASH_ARGS;
-    ctx.delta_seed = 0.0;
     
+    fpc_context_init_default(
+      &ctx,
+      fcm,
+      dfcm,
+      TABLE_SIZE,
+      TABLE_SIZE);
+
     // Compression:
     fpc_context_reset(&ctx);
     size_t compressed_byte_count = fpc_encode(&ctx, data, DOUBLE_COUNT, compressed);
