@@ -75,7 +75,7 @@ typedef struct fpc_context_t
   // The size, in elements, of the array pointed to by "dfcm".
   size_t dfcm_size;
   // Seed value.
-  double seed;
+  double delta_seed;
   // Custom options for the FCM and DFCM hash functions.
   fpc_hash_args_t hash_args;
 } fpc_context_t;
@@ -91,12 +91,28 @@ typedef struct fpc32_context_t
   // The size, in elements, of the array pointed to by "dfcm".
   size_t dfcm_size;
   // Seed value.
-  float seed;
+  float delta_seed;
   // Custom options for the FCM and DFCM hash functions.
   fpc_hash_args_t hash_args;
 } fpc32_context_t;
 
 typedef fpc32_context_t* FPC_RESTRICT fpc32_context_ptr_t;
+
+FPC_ATTR void FPC_CALL fpc_context_init(
+  fpc_context_ptr_t ctx,
+  uint64_t* FPC_RESTRICT fcm,
+  uint64_t* FPC_RESTRICT dfcm,
+  size_t fcm_size,
+  size_t dfcm_size,
+  fpc_hash_args_t hash_args,
+  double delta_seed);
+
+FPC_ATTR void FPC_CALL fpc_context_init_default(
+  fpc_context_ptr_t ctx,
+  uint64_t* FPC_RESTRICT fcm,
+  uint64_t* FPC_RESTRICT dfcm,
+  size_t fcm_size,
+  size_t dfcm_size);
 
 FPC_ATTR void FPC_CALL fpc_context_reset(
   fpc_context_ptr_t ctx);
@@ -131,6 +147,22 @@ FPC_ATTR void FPC_CALL fpc_decode_separate(
   const void* FPC_RESTRICT compressed,
   double* FPC_RESTRICT out_values,
   size_t out_count);
+
+FPC_ATTR void FPC_CALL fpc32_context_init(
+  fpc32_context_ptr_t ctx,
+  uint32_t* FPC_RESTRICT fcm,
+  uint32_t* FPC_RESTRICT dfcm,
+  size_t fcm_size,
+  size_t dfcm_size,
+  fpc_hash_args_t hash_args,
+  float delta_seed);
+
+FPC_ATTR void FPC_CALL fpc32_context_init_default(
+  fpc32_context_ptr_t ctx,
+  uint32_t* FPC_RESTRICT fcm,
+  uint32_t* FPC_RESTRICT dfcm,
+  size_t fcm_size,
+  size_t dfcm_size);
 
 FPC_ATTR void FPC_CALL fpc32_context_reset(
   fpc32_context_ptr_t ctx);
@@ -314,6 +346,38 @@ FPC_ATTR void FPC_CALL fpc32_decode(
   #define FPC_STORE_NT_U64(P, V) (*(uint64_t* FPC_RESTRICT)(P)) = (V)
 #endif
 
+#define FPC_IS_POW2(x) (((x) != 0) && (((x) & ((x) - 1)) != 0))
+
+FPC_ATTR void FPC_CALL fpc_context_init(
+  fpc_context_ptr_t ctx,
+  uint64_t* FPC_RESTRICT fcm,
+  uint64_t* FPC_RESTRICT dfcm,
+  size_t fcm_size,
+  size_t dfcm_size,
+  fpc_hash_args_t hash_args,
+  double delta_seed)
+{
+  FPC_INVARIANT(FPC_IS_POW2(fcm_size));
+  FPC_INVARIANT(FPC_IS_POW2(dfcm_size));
+  ctx->fcm = fcm;
+  ctx->dfcm = dfcm;
+  ctx->fcm_size = fcm_size;
+  ctx->dfcm_size = dfcm_size;
+  ctx->hash_args = hash_args;
+  ctx->delta_seed = delta_seed;
+}
+
+FPC_ATTR void FPC_CALL fpc_context_init_default(
+  fpc_context_ptr_t ctx,
+  uint64_t* FPC_RESTRICT fcm,
+  uint64_t* FPC_RESTRICT dfcm,
+  size_t fcm_size,
+  size_t dfcm_size)
+{
+  const fpc_hash_args_t hash_args = FPC_DEFAULT_HASH_ARGS;
+  fpc_context_init(ctx, fcm, dfcm, fcm_size, dfcm_size, hash_args, 0.0);
+}
+
 FPC_ATTR void FPC_CALL fpc_context_reset(
   fpc_context_ptr_t ctx)
 {
@@ -340,7 +404,7 @@ FPC_ATTR size_t FPC_CALL fpc_encode_size(
   size = 0;
   if (values == end)
     return size;
-  prior_value = *(const uint64_t* FPC_RESTRICT)&ctx->seed;
+  prior_value = *(const uint64_t* FPC_RESTRICT)&ctx->delta_seed;
   fcm_hash = dfcm_hash = fcm_prediction = dfcm_prediction = 0;
   do
   {
@@ -409,7 +473,7 @@ FPC_ATTR size_t FPC_CALL fpc_encode_separate(
     return 0;
   out_h = (uint8_t * FPC_RESTRICT)out_headers;
   compressed_begin = out = (uint8_t* FPC_RESTRICT)out_compressed;
-  prior_value = *(const uint64_t* FPC_RESTRICT)&ctx->seed;
+  prior_value = *(const uint64_t* FPC_RESTRICT)&ctx->delta_seed;
   fcm_hash = dfcm_hash = fcm_prediction = dfcm_prediction = 0;
   do
   {
@@ -476,7 +540,7 @@ FPC_ATTR void FPC_CALL fpc_decode_separate(
     return;
   in = (const uint8_t* FPC_RESTRICT)compressed;
   in_headers = (const uint8_t* FPC_RESTRICT)headers;
-  prior_value = *(const uint64_t* FPC_RESTRICT)&ctx->seed;
+  prior_value = *(const uint64_t* FPC_RESTRICT)&ctx->delta_seed;
   fcm_hash = dfcm_hash = fcm_prediction = dfcm_prediction = 0;
   do
   {
@@ -542,6 +606,36 @@ FPC_ATTR void FPC_CALL fpc_decode(
     out_count);
 }
 
+FPC_ATTR void FPC_CALL fpc32_context_init(
+  fpc32_context_ptr_t ctx,
+  uint32_t* FPC_RESTRICT fcm,
+  uint32_t* FPC_RESTRICT dfcm,
+  size_t fcm_size,
+  size_t dfcm_size,
+  fpc_hash_args_t hash_args,
+  float delta_seed)
+{
+  FPC_INVARIANT(FPC_IS_POW2(fcm_size));
+  FPC_INVARIANT(FPC_IS_POW2(dfcm_size));
+  ctx->fcm = fcm;
+  ctx->dfcm = dfcm;
+  ctx->fcm_size = fcm_size;
+  ctx->dfcm_size = dfcm_size;
+  ctx->hash_args = hash_args;
+  ctx->delta_seed = delta_seed;
+}
+
+FPC_ATTR void FPC_CALL fpc32_context_init_default(
+  fpc32_context_ptr_t ctx,
+  uint32_t* FPC_RESTRICT fcm,
+  uint32_t* FPC_RESTRICT dfcm,
+  size_t fcm_size,
+  size_t dfcm_size)
+{
+  const fpc_hash_args_t hash_args = FPC32_DEFAULT_HASH_ARGS;
+  fpc32_context_init(ctx, fcm, dfcm, fcm_size, dfcm_size, hash_args, 0.0F);
+}
+
 FPC_ATTR void FPC_CALL fpc32_context_reset(
   fpc32_context_ptr_t ctx)
 {
@@ -568,7 +662,7 @@ FPC_ATTR size_t FPC_CALL fpc32_encode_size(
   size = 0;
   if (values == end)
     return size;
-  prior_value = *(const uint32_t* FPC_RESTRICT)&ctx->seed;
+  prior_value = *(const uint32_t* FPC_RESTRICT)&ctx->delta_seed;
   fcm_hash = dfcm_hash = fcm_prediction = dfcm_prediction = 0;
   do
   {
@@ -637,7 +731,7 @@ FPC_ATTR size_t FPC_CALL fpc32_encode_separate(
     return 0;
   out_h = (uint8_t * FPC_RESTRICT)out_headers;
   compressed_begin = out = (uint8_t* FPC_RESTRICT)out_compressed;
-  prior_value = *(const uint32_t* FPC_RESTRICT)&ctx->seed;
+  prior_value = *(const uint32_t* FPC_RESTRICT)&ctx->delta_seed;
   fcm_hash = dfcm_hash = fcm_prediction = dfcm_prediction = 0;
   do
   {
@@ -703,7 +797,7 @@ FPC_ATTR void FPC_CALL fpc32_decode_separate(
     return;
   in = (const uint8_t* FPC_RESTRICT)compressed;
   in_headers = (const uint8_t* FPC_RESTRICT)headers;
-  prior_value = *(const uint32_t* FPC_RESTRICT)&ctx->seed;
+  prior_value = *(const uint32_t* FPC_RESTRICT)&ctx->delta_seed;
   fcm_hash = dfcm_hash = fcm_prediction = dfcm_prediction = 0;
   do
   {

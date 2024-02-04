@@ -29,7 +29,7 @@ int main(
   c.dfcm = dfcm;
   c.fcm_size = FCM_SIZE;
   c.dfcm_size = DFCM_SIZE;
-  c.seed = 0.0;
+  c.delta_seed = 0.0;
   c.hash_args = default_args;
 
   srand(123);

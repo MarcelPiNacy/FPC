@@ -8,18 +8,20 @@ It also contains a version of the algorithm for single-precision floats (`fpc32_
 ```c
 #define FPC_IMPLEMENTATION
 #include <fpc.h>
+
 #include <stdlib.h>
 #include <string.h>
 
 #define DOUBLE_COUNT (1U << 12U)
 #define OUTPUT_SIZE (FPC_UPPER_BOUND(1U << 12U))
+#define TABLE_SIZE (1U << 15)
 
 double data[DOUBLE_COUNT];
 uint8_t compressed[OUTPUT_SIZE];
 double decompressed[DOUBLE_COUNT];
 
-uint64_t fcm[FPC_TABLE_SIZE_DEFAULT];
-uint64_t dfcm[FPC_TABLE_SIZE_DEFAULT];
+uint64_t fcm[TABLE_SIZE];
+uint64_t dfcm[TABLE_SIZE];
 
 int main()
 {
@@ -28,23 +30,21 @@ int main()
     
     srand(123);
     for (i = 0; i != DOUBLE_COUNT; ++i)
-    	data[i] = rand();
+    	data[i] = (double)rand();
         
-    ctx.fcm_size = FPC_TABLE_SIZE_DEFAULT;
     ctx.fcm = fcm;
-    ctx.dfcm_size = FPC_TABLE_SIZE_DEFAULT;
     ctx.dfcm = dfcm;
+    ctx.fcm_size = TABLE_SIZE;
+    ctx.dfcm_size = TABLE_SIZE;
     ctx.hash_args = FPC_DEFAULT_HASH_ARGS;
-    ctx.seed = 0.0;
+    ctx.delta_seed = 0.0;
     
     // Compression:
-    memset(fcm, 0, sizeof(fcm));
-    memset(dfcm, 0, sizeof(dfcm));
+    fpc_context_reset(&ctx);
     size_t compressed_byte_count = fpc_encode(&ctx, data, DOUBLE_COUNT, compressed);
     
     // Decompression:
-    memset(fcm, 0, sizeof(fcm));
-    memset(dfcm, 0, sizeof(dfcm));
+    fpc_context_reset(&ctx);
     fpc_decode(&ctx, compressed, decompressed, DOUBLE_COUNT);
     return 0;
 }
