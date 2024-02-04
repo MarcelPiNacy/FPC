@@ -314,6 +314,14 @@ FPC_ATTR void FPC_CALL fpc32_decode(
   #include <string.h>
 #endif
 
+#ifndef FPC_LIKELY_IF
+  #define FPC_LIKELY_IF if
+#endif
+
+#ifndef FPC_UNLIKELY_IF
+  #define FPC_UNLIKELY_IF if
+#endif
+
 #ifndef FPC_MEMCPY
   #define FPC_MEMCPY (void)memcpy
 #endif
@@ -492,8 +500,8 @@ FPC_ATTR size_t FPC_CALL fpc_encode_separate(
       type = fcm_xor > dfcm_xor;
       value_xor = type ? dfcm_xor : fcm_xor;
       lzbc = FPC_CLZ64(value_xor) >> 3;
+      header |= (((type << 3) | (lzbc - (lzbc >= FPC_LEAST_FREQUENT_LZBC)))) << (i << 2);
       lzbc -= (lzbc == FPC_LEAST_FREQUENT_LZBC);
-      header |= (((type << 3) | lzbc)) << (i << 2);
       lzbc = 8 - lzbc;
       FPC_INVARIANT(lzbc <= 8);
       FPC_MEMCPY(out_b, &value_xor, lzbc);
@@ -555,6 +563,7 @@ FPC_ATTR void FPC_CALL fpc_decode_separate(
     {
       type = header & 8;
       lzbc = (header & 7);
+      lzbc += (lzbc >= FPC_LEAST_FREQUENT_LZBC);
       lzbc = 8 - lzbc;
       header >>= 4;
       value = 0;
@@ -680,7 +689,6 @@ FPC_ATTR size_t FPC_CALL fpc32_encode_size(
       type = fcm_xor > dfcm_xor;
       value_xor = type ? dfcm_xor : fcm_xor;
       lzbc = FPC_CLZ32(value_xor) >> 3;
-      lzbc -= (lzbc == FPC_LEAST_FREQUENT_LZBC);
       lzbc = 4 - lzbc;
       FPC_INVARIANT(lzbc <= 4);
       size += lzbc;
