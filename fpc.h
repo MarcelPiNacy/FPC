@@ -170,7 +170,6 @@ FPC_ATTR void FPC_CALL fpc32_decode(
 
 
 
-#define FPC_IMPLEMENTATION
 #ifdef FPC_IMPLEMENTATION
 
 #if __has_include(<stdbool.h>)
