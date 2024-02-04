@@ -68,8 +68,8 @@ typedef struct fpc_hash_args_t
 
 typedef struct fpc_context_t
 {
-  uint64_t* fcm;
-  uint64_t* dfcm;
+  uint64_t* FPC_RESTRICT fcm;
+  uint64_t* FPC_RESTRICT dfcm;
   // The size, in elements, of the array pointed to by "fcm".
   size_t fcm_size;
   // The size, in elements, of the array pointed to by "dfcm".
@@ -84,12 +84,12 @@ typedef fpc_context_t* FPC_RESTRICT fpc_context_ptr_t;
 
 typedef struct fpc32_context_t
 {
-  uint32_t* fcm;
-  uint32_t* dfcm;
+  uint32_t* FPC_RESTRICT fcm;
+  uint32_t* FPC_RESTRICT dfcm;
   // The size, in elements, of the array pointed to by "fcm".
-  uint32_t fcm_size;
+  size_t fcm_size;
   // The size, in elements, of the array pointed to by "dfcm".
-  uint32_t dfcm_size;
+  size_t dfcm_size;
   // Seed value.
   float seed;
   // Custom options for the FCM and DFCM hash functions.
