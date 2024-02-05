@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #define VALUE_COUNT (1 << 22)
 #define FCM_SIZE (1 << 15)
@@ -30,8 +31,7 @@ void test()
   c.delta_seed = 0.0;
   c.hash_args = default_args;
 
-  srand(123);
-
+  srand(time(NULL));
   for (i = 0; i != VALUE_COUNT; ++i)
     source_f64[i] = (double)rand() / (double)rand();
 
@@ -67,12 +67,12 @@ void test32()
   c.delta_seed = 0.0;
   c.hash_args = default_args;
 
-  srand(123);
+  srand(time(NULL));
   for (i = 0; i != VALUE_COUNT; ++i)
-    source_f64[i] = (float)rand() / (float)rand();
+    source_f32[i] = (float)rand() / (float)rand();
 
   fpc32_context_reset(&c);
-  encoded_size = fpc32_encode(&c, source_f32, VALUE_COUNT, encoded_f64);
+  encoded_size = fpc32_encode(&c, source_f32, VALUE_COUNT, encoded_f32);
 
   fpc32_context_reset(&c);
   fpc32_decode(&c, encoded_f32, decoded_f32, VALUE_COUNT);
@@ -80,8 +80,8 @@ void test32()
   for (i = 0; i != VALUE_COUNT; ++i)
     assert(source_f32[i] == decoded_f32[i]);
 
-  source_size = VALUE_COUNT * sizeof(double);
-  printf("32-bit test succeeded (%llu doubles, %f compression ratio)\n", (unsigned long long)VALUE_COUNT, (float)encoded_size / (float)source_size);
+  source_size = VALUE_COUNT * sizeof(float);
+  printf("32-bit test succeeded (%llu doubles, %f compression ratio)\n", (unsigned long long)VALUE_COUNT, (double)encoded_size / (double)source_size);
 }
 
 int main(
